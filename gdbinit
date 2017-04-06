@@ -33,7 +33,7 @@ The list of all the available styles can be obtained with (from GDB itself):
     python from pygments.styles import get_all_styles as styles
     python for s in styles(): print(s)
 """,
-                'default': 'vim',
+                'default': 'monokai',
                 'type': str
             },
             # prompt
@@ -803,6 +803,11 @@ class Source(Dashboard.Module):
         end = min(current_line - 1 + self.context + 1, len(self.source_lines))
         # return the source code listing
         out = []
+        frame = gdb.selected_frame()
+        function = ansi(frame.function(), R.style_high)
+        dirname = ansi(os.path.dirname(self.file_name)+'/', R.style_low)
+        basename = os.path.basename(self.file_name)
+        out.append('{} in {}{}:{}'.format(function, dirname, basename, current_line))
         number_format = '{{:>{}}}'.format(len(str(end)))
         for number, line in enumerate(self.source_lines[start:end], start + 1):
             # properly handle UTF-8 source files
@@ -824,11 +829,25 @@ class Source(Dashboard.Module):
             out.append(line_format.format(number, line.rstrip('\n')))
         return out
 
+
+    def set_lines(self, arg):
+        if arg:
+            self.context = int(arg)/2
+
+    def commands(self):
+        return {
+            'setlines': {
+                'action': self.set_lines,
+                'doc': 'set number of source lines to be displayed',
+                'complete': gdb.COMPLETE_EXPRESSION
+            }
+        }
+
     def attributes(self):
         return {
             'context': {
                 'doc': 'Number of context lines.',
-                'default': 5,
+                'default': 15,
                 'type': int,
                 'check': check_ge_zero
             }
@@ -1400,6 +1419,13 @@ set python print-stack full
 # Start ------------------------------------------------------------------------
 
 python Dashboard.start()
+
+# disable the following modules by default
+dashboard expressions
+dashboard history
+dashboard memory
+dashboard threads
+dashboard stack
 
 # ------------------------------------------------------------------------------
 # Copyright (c) 2015-2017 Andrea Cardaci <cyrus.and@gmail.com>
