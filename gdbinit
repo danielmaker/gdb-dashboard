@@ -847,7 +847,7 @@ class Source(Dashboard.Module):
         return {
             'context': {
                 'doc': 'Number of context lines.',
-                'default': 15,
+                'default': 20,
                 'type': int,
                 'check': check_ge_zero
             }
@@ -1406,6 +1406,45 @@ class Expressions(Dashboard.Module):
 # XXX traceback line numbers in this Python block must be increased by 1
 end
 
+# ------------------------------------------------------------------------------
+python
+
+class BackTrace (gdb.Command):   # inherit from gdb.Command
+   """formatted backtrace"""
+
+   def __init__ (self):
+      super (BackTrace, self).__init__ ("bt", gdb.COMMAND_USER)  # register a new command "bt"
+
+   def invoke (self, arg, from_tty):
+
+      fs = gdb
+      fd = 1
+
+      # get the terminal width (default main terminal if either
+      # the output is not a file)
+      try:
+          width = Dashboard.get_term_width(fd)
+      except:
+          width = Dashboard.get_term_width()
+
+      instance = Stack()
+      instance.attributes()
+      setattr(instance, 'limit', 20)
+      setattr(instance, 'compact', False)
+      setattr(instance, 'show_arguments', False)
+      setattr(instance, 'show_locals', False)
+
+      # ask the module to generate the content
+      lines = instance.lines(width, style_changed=False)
+      # write the data
+      fs.write('\n'.join(lines))
+      fs.write('\n')
+      fs.flush()
+
+BackTrace() # initial an instance to register the command
+
+end
+
 # Better GDB defaults ----------------------------------------------------------
 
 set history save
@@ -1414,6 +1453,7 @@ set verbose off
 set print pretty on
 set print array off
 set print array-indexes on
+set print static-members off
 set python print-stack full
 
 # Start ------------------------------------------------------------------------
@@ -1421,6 +1461,8 @@ set python print-stack full
 python Dashboard.start()
 
 # disable the following modules by default
+dashboard assembly
+dashboard registers
 dashboard expressions
 dashboard history
 dashboard memory
